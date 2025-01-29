@@ -223,6 +223,13 @@ class Table(object):
         See :py:meth:`update() <dataset.Table.update>` for details on
         the other parameters.
         """
+        # Create a dummy row containing all possible columns just for schema sync
+        sync_row = {}
+        for row in rows:
+            sync_row.update({k:v for k,v in row.items() if k not in sync_row})
+
+        self._sync_columns(sync_row, ensure, types=types)
+
         keys = ensure_list(keys)
 
         chunk = []
@@ -234,8 +241,7 @@ class Table(object):
 
             # bindparam requires names to not conflict (cannot be "id" for id)
             for key in keys:
-                row["_%s" % key] = row[key]
-                row.pop(key)
+                row[f"_{key}"] = row.pop(key)
             chunk.append(row)
 
             # Update when chunk_size is fulfilled or this is the last row

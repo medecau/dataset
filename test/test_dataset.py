@@ -1,3 +1,4 @@
+import sqlalchemy.exc
 import os
 import unittest
 from datetime import datetime
@@ -440,6 +441,25 @@ class TableTestCase(unittest.TestCase):
         assert (
             tbl.find_one(id=2)["location"] == tbl.find_one(id=3)["location"] == "asdf"
         )  # noqa
+
+    def test_update_many_ensure(self):
+        tbl = self.db["update_many_test"]
+        tbl.insert_many([{"name": "Alice"}, {"name": "Bob"}])
+        tbl.update_many([{"id": 1, 'loc': 'Antwerp'}, {"id": 2, 'loc': 'Bern'}], ["id"], ensure=True)
+
+        assert 'loc' in tbl.columns
+        assert dict(tbl.find_one(id=1)) == {'id': 1, 'name':'Alice', 'loc':'Antwerp'}
+        assert dict(tbl.find_one(id=2)) == {'id': 2, 'name':'Bob', 'loc':'Bern'}
+
+    def test_update_many_no_ensure(self):
+        tbl = self.db["update_many_test"]
+        tbl.insert_many([{"name": "Alice"}, {"name": "Bob"}])
+        with self.assertRaises(sqlalchemy.exc.CompileError):
+            tbl.update_many([{"id": 1, 'loc': 'Antwerp'}, {"id": 2, 'loc': 'Bern'}], ["id"], ensure=False)
+
+        assert 'loc' not in tbl.columns
+        assert dict(tbl.find_one(id=1)) == {'id': 1, 'name':'Alice'}
+        assert dict(tbl.find_one(id=2)) == {'id': 2, 'name':'Bob'}
 
     def test_upsert_many(self):
         # Also tests updating on records with different attributes
